@@ -26,11 +26,11 @@ public class AppointmentsController(AppointmentService service) : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAppointments()
+    public async Task<IActionResult> GetAppointments([FromQuery] string? status, [FromQuery]string? nazwisko)
     {
         try
         {
-            return Ok(await service.GetAppointmentList());
+            return Ok(await service.GetAppointmentList(status, nazwisko));
         }
         catch (NotFoundExcpetion e)
         {

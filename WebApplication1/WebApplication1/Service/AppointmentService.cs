@@ -60,7 +60,7 @@ public class AppointmentService(IConfiguration config)
                 return details;
         }
 
-        public async Task<List<AppointmentListDto>> GetAppointmentList()
+        public async Task<List<AppointmentListDto>> GetAppointmentList(string? status, string? nazwisko)
         {
             var list = new List<AppointmentListDto>();
                 
@@ -75,8 +75,14 @@ public class AppointmentService(IConfiguration config)
                                         select a.IdAppointment, a.AppointmentDate, a.Status, a.Reason, concat(p.FirstName,' ', p.LastName) as Pacjent
                                   from Appointments A 
                                   left join Patients P on a.IdPatient = p.IdPatient
+                                  WHERE (@Status IS NULL OR a.Status = @Status)
+                                  AND (@PatientLastName IS NULL OR p.LastName = @PatientLastName)
                                   
                                   """;
+            command.Parameters.AddWithValue("@Status", (object?)status ?? DBNull.Value);
+            command.Parameters.AddWithValue("@PatientLastName", (object?)nazwisko ?? DBNull.Value);
+
+            
             await using var reader = await command.ExecuteReaderAsync();
 
             while (await reader.ReadAsync())
