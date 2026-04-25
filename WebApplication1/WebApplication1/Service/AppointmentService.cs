@@ -1,6 +1,62 @@
-﻿namespace WebApplication1.Service;
+﻿using Microsoft.Data.SqlClient;
+using WebApplication1.DTO;
+using WebApplication1.Exceptions;
 
-public class AppointmentService
+namespace WebApplication1.Service;
+
+public class AppointmentService(IConfiguration config)
 {
-        
+        public async Task<AppointmentDetailsDto> GetAppointmentDetails(int appId)
+        {
+                AppointmentDetailsDto? details = null;
+                
+                await using var connection = new SqlConnection(config.GetConnectionString("Default"));
+                await using var command = new SqlCommand();
+                
+                await connection.OpenAsync();
+
+                command.Connection = connection;
+
+                command.CommandText = """
+                                      select a.IdAppointment, p.FirstName as PatientFirstName, p.LastName as PatientLastName, p.DateOfBirth, 
+                                             d.FirstName as DoctorsFirstName, d.LastName as DoctorsLastName,
+                                             a.AppointmentDate, a.Status, a.Reason, A.InternalNotes, A.CreatedAt
+                                      from Appointments A 
+                                      left join Patients P on a.IdPatient = p.IdPatient
+                                      left join Doctors D on a.IdDoctor = d.IdDoctor
+                                      where a.IdAppointment = @idAppointment
+                                      """;
+                
+                command.Parameters.AddWithValue("@idAppointment", appId);
+                
+                await using var reader = await command.ExecuteReaderAsync();
+
+                while (await reader.ReadAsync())
+                {
+                    details = new AppointmentDetailsDto
+                    {
+                        PatientFirstName =  (string)reader["PatientFirstName"],
+                        PatientLastName = (string)reader["PatientLastName"],
+                        PatientBirthDate = (DateTime)reader["DateOfBirth"],
+                        DoctorsFirstName = (string)reader["DoctorsFirstName"],
+                        DoctorsLastName =  (string)reader["DoctorsLastName"],
+                        AppointmentDate =  (DateTime)reader["AppointmentDate"],
+                        Status = (string)reader["Status"],
+                        Reason = (string)reader["Reason"],
+                        InternalNotes = reader["InternalNotes"] ==  DBNull.Value 
+                            ? null 
+                            : (string)reader["InternalNotes"],
+                        CreatedAt =  (DateTime)reader["CreatedAt"]
+                        
+                    };
+                    
+                }
+
+                if (details is null)
+                {
+                    throw new NotFoundExcpetion("Appointment not found");
+                }
+                
+                return details;
+        }
 }
