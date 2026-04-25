@@ -59,4 +59,49 @@ public class AppointmentService(IConfiguration config)
                 
                 return details;
         }
+
+        public async Task<List<AppointmentListDto>> GetAppointmentList()
+        {
+            var list = new List<AppointmentListDto>();
+                
+            await using var connection = new SqlConnection(config.GetConnectionString("Default"));
+            await using var command = new SqlCommand();
+            
+            await connection.OpenAsync();
+
+            command.Connection = connection;
+
+            command.CommandText = """
+                                        select a.IdAppointment, a.AppointmentDate, a.Status, a.Reason, concat(p.FirstName,' ', p.LastName) as Pacjent
+                                  from Appointments A 
+                                  left join Patients P on a.IdPatient = p.IdPatient
+                                  
+                                  """;
+            await using var reader = await command.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                
+                list.Add( new AppointmentListDto
+                {
+                    IdAppointment =  (int)reader["IdAppointment"],
+                    AppointmentDate =  (DateTime)reader["AppointmentDate"],
+                    Status = (string)reader["Status"],
+                    Reason = (string)reader["Reason"],
+                    PatientFullName = (string)reader["Pacjent"]
+                        
+                });
+                
+                
+                    
+            }
+
+            if (list is null)
+            {
+                throw new NotFoundExcpetion("Appointment not found");
+            }
+                
+            return list;
+            
+        }
 }

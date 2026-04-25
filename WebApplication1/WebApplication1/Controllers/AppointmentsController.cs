@@ -24,5 +24,18 @@ public class AppointmentsController(AppointmentService service) : ControllerBase
         }
             
     }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAppointments()
+    {
+        try
+        {
+            return Ok(await service.GetAppointmentList());
+        }
+        catch (NotFoundExcpetion e)
+        {
+            return NotFound(e.Message);
+        }
+    }
     
 }
