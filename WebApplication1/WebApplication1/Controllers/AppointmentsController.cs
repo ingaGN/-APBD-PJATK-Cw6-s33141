@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using WebApplication1.DTO;
 using WebApplication1.Service;
 using WebApplication1.Exceptions;
 
@@ -31,6 +32,20 @@ public class AppointmentsController(AppointmentService service) : ControllerBase
         try
         {
             return Ok(await service.GetAppointmentList(status, nazwisko));
+        }
+        catch (NotFoundExcpetion e)
+        {
+            return NotFound(e.Message);
+        }
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> PostAppoinment([FromBody] CreateAppointmentRequestDto request)
+    {
+        try
+        {
+            await service.AddAppointment(request);
+            return Created();
         }
         catch (NotFoundExcpetion e)
         {

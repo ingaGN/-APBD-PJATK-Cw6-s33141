@@ -98,9 +98,9 @@ public class AppointmentService(IConfiguration config)
                         
                 });
                 
-                
-                    
             }
+            
+            command.Parameters.Clear();
 
             if (list is null)
             {
@@ -110,4 +110,75 @@ public class AppointmentService(IConfiguration config)
             return list;
             
         }
-}
+
+        public async Task AddAppointment(CreateAppointmentRequestDto createDto)
+        {
+            var list = new List<AppointmentListDto>();
+                
+            await using var connection = new SqlConnection(config.GetConnectionString("Default"));
+            await using var command = new SqlCommand();
+            
+            await connection.OpenAsync();
+
+            command.Connection = connection;
+
+            command.CommandText = """
+                                    select 1 from doctors where IdDoctor = @idDoctor
+                                  """;
+            command.Parameters.AddWithValue("@idDoctor", createDto.IdDoctor);
+            
+            var doctorExists = await command.ExecuteScalarAsync();
+            if (doctorExists is null)
+            {
+                throw new NotFoundExcpetion("Doctor not found");
+            }
+            
+            command.Parameters.Clear();
+            
+            command.CommandText = """
+                                    select 1 from patients where IdPatient = @idPatient
+                                  """;
+            command.Parameters.AddWithValue("@idPatient", createDto.IdPatient);
+            
+            var patientExists = await command.ExecuteScalarAsync();
+            if (patientExists is null)
+            {
+                throw new NotFoundExcpetion("Patient not found");
+            }
+            
+            command.Parameters.Clear();
+
+            if (createDto.AppointmentDate < DateTime.Now)
+            {
+                throw new NotFoundExcpetion("cant schedule appointment in the past");
+            }
+            
+            await using var transaction = await connection.BeginTransactionAsync();
+            command.Transaction = (SqlTransaction)transaction;
+
+            try
+            {
+                command.CommandText = """
+                                      insert into Appointments (IdPatient, IdDoctor, AppointmentDate, Status, Reason, CreatedAt)
+                                      values (@idPatient, @idDoctor,@appointmentDate, 'Scheduled',  @reason, @createdAt)
+                                      """;
+                command.Parameters.AddWithValue("@idPatient", createDto.IdPatient);
+                command.Parameters.AddWithValue("@idDoctor", createDto.IdDoctor);
+                command.Parameters.AddWithValue("@appointmentDate", createDto.AppointmentDate);
+                command.Parameters.AddWithValue("@reason", createDto.Reason);
+                command.Parameters.AddWithValue("@createdAt", DateTime.Now);
+                
+                await command.ExecuteNonQueryAsync();
+                command.Parameters.Clear();
+                
+                await transaction.CommitAsync();
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+                                                  
+                                                  
+                                              }
+                                      }
