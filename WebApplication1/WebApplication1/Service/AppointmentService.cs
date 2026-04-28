@@ -113,8 +113,6 @@ public class AppointmentService(IConfiguration config)
 
         public async Task AddAppointment(CreateAppointmentRequestDto createDto)
         {
-            var list = new List<AppointmentListDto>();
-                
             await using var connection = new SqlConnection(config.GetConnectionString("Default"));
             await using var command = new SqlCommand();
             
@@ -178,7 +176,88 @@ public class AppointmentService(IConfiguration config)
                 await transaction.RollbackAsync();
                 throw;
             }
-                                                  
-                                                  
-                                              }
-                                      }
+
+        }
+
+        public async Task UpdateAppointment(UpdateAppointmentRequestDto updateDto)
+        {
+            await using var connection = new SqlConnection(config.GetConnectionString("Default"));
+            await using var command = new SqlCommand();
+            
+            await connection.OpenAsync();
+
+            command.Connection = connection;
+            
+            command.CommandText = """
+                                    select 1 from appointments where IdAppointment = @idAppointment
+                                  """;
+            command.Parameters.AddWithValue("@idAppointment", updateDto.IdAppointment);
+            
+            var appointmentExists = await command.ExecuteScalarAsync();
+            if (appointmentExists is null)
+            {
+                throw new NotFoundExcpetion("Doctor not found");
+            }
+            
+            command.Parameters.Clear();
+
+            
+            command.CommandText = """
+                                    select 1 from doctors where IdDoctor = @idDoctor and isActive = 1;
+                                  """;
+            command.Parameters.AddWithValue("@idDoctor", updateDto.IdDoctor);
+            
+            var doctorExists = await command.ExecuteScalarAsync();
+            if (doctorExists is null)
+            {
+                throw new NotFoundExcpetion("Doctor not found");
+            }
+            
+            command.Parameters.Clear();
+            
+            command.CommandText = """
+                                    select 1 from patients where IdPatient = @idPatient and isActive = 1;
+                                  """;
+            command.Parameters.AddWithValue("@idPatient", updateDto.IdPatient);
+            
+            var patientExists = await command.ExecuteScalarAsync();
+            if (patientExists is null)
+            {
+                throw new NotFoundExcpetion("Patient not found");
+            }
+            
+            command.Parameters.Clear();
+            
+            await using var transaction = await connection.BeginTransactionAsync();
+            command.Transaction = (SqlTransaction)transaction;
+
+            try
+            {
+                command.CommandText = """
+                                      update Appointments set idPatient = @idPatient, idDoctor = @idDoctor, 
+                                                              appointmentDate = @appointmentDate, status = @status,
+                                                              reason = @reason, InternalNotes = @internalNotes
+                                      """;
+            
+                command.Parameters.AddWithValue("@idDoctor", updateDto.IdDoctor);
+                command.Parameters.AddWithValue("@idPatient", updateDto.IdPatient);
+                command.Parameters.AddWithValue("@appointmentDate", updateDto.AppointmentDate);
+                command.Parameters.AddWithValue("@status", updateDto.Status);
+                command.Parameters.AddWithValue("@reason", updateDto.Reason);
+                command.Parameters.AddWithValue("@internalNotes", updateDto.InternalNotes);
+                
+                await command.ExecuteNonQueryAsync();
+                command.Parameters.Clear();
+                
+                await transaction.CommitAsync();
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+            
+
+
+        }
+}

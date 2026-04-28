@@ -52,5 +52,20 @@ public class AppointmentsController(AppointmentService service) : ControllerBase
             return NotFound(e.Message);
         }
     }
+
+    [HttpPut]
+    [Route("{id:int}")]
+    public async Task<IActionResult> PutAppointment([FromRoute] int id, [FromBody] UpdateAppointmentRequestDto request)
+    {
+        try
+        {
+            await service.UpdateAppointment(request);
+            return Ok();
+        }
+        catch (NotFoundExcpetion)
+        {
+            return NotFound();
+        }
+    }
     
 }
