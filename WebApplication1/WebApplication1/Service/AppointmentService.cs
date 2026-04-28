@@ -237,6 +237,7 @@ public class AppointmentService(IConfiguration config)
                                       update Appointments set idPatient = @idPatient, idDoctor = @idDoctor, 
                                                               appointmentDate = @appointmentDate, status = @status,
                                                               reason = @reason, InternalNotes = @internalNotes
+                                                              where IdAppointment = @idAppointment
                                       """;
             
                 command.Parameters.AddWithValue("@idDoctor", updateDto.IdDoctor);
@@ -245,6 +246,7 @@ public class AppointmentService(IConfiguration config)
                 command.Parameters.AddWithValue("@status", updateDto.Status);
                 command.Parameters.AddWithValue("@reason", updateDto.Reason);
                 command.Parameters.AddWithValue("@internalNotes", updateDto.InternalNotes);
+                command.Parameters.AddWithValue("@idAppointment", updateDto.IdAppointment);
                 
                 await command.ExecuteNonQueryAsync();
                 command.Parameters.Clear();
@@ -256,8 +258,40 @@ public class AppointmentService(IConfiguration config)
                 await transaction.RollbackAsync();
                 throw;
             }
-            
 
+        }
+
+        public async Task DeleteAppointment(int id)
+        {
+            await using var connection = new SqlConnection(config.GetConnectionString("Default"));
+            await using var command = new SqlCommand();
+            
+            await connection.OpenAsync();
+
+            command.Connection = connection;
+            command.CommandText = """
+                                    select 1 from appointments where IdAppointment = @idAppointment
+                                  """;
+            command.Parameters.AddWithValue("@idAppointment", id);
+            
+            var appointmentExists = await command.ExecuteScalarAsync();
+            if (appointmentExists is null)
+            {
+                throw new NotFoundExcpetion("appointment not found");
+            }
+            
+            command.Parameters.Clear();
+
+
+            command.CommandText = """
+                                  delete from appointments where IdAppointment = @id
+                                  """;
+            
+            command.Parameters.AddWithValue("@id", id);
+            
+            await command.ExecuteNonQueryAsync();
+            
+            command.Parameters.Clear();
 
         }
 }

@@ -67,5 +67,20 @@ public class AppointmentsController(AppointmentService service) : ControllerBase
             return NotFound();
         }
     }
+
+    [HttpDelete]
+    [Route("{id:int}")]
+    public async Task<IActionResult> DeleteAppointment([FromRoute] int id)
+    {
+        try
+        {
+            await service.DeleteAppointment(id);
+            return Ok();
+        }
+        catch (NotFoundExcpetion e)
+        {
+            return NotFound(e.Message);
+        }
+    }
     
 }
